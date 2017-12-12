@@ -8,13 +8,7 @@ var testImage = 'ubuntu:14.04';
 describe("#image", function() {
 
   describe("#inspect", function() {
-    it("should inspect a image without callback", function(done) {
-      var image = docker.getImage(testImage);
-      expect(image.inspect()).to.be.a('string');
-      done();
-    });
-
-    it("should inspect a image", function(done) {
+    it("should inspect an image", function(done) {
       var image = docker.getImage(testImage);
 
       function handler(err, data) {
@@ -24,6 +18,21 @@ describe("#image", function() {
       }
 
       image.inspect(handler);
+    });
+  });
+
+  describe("#distribution", function() {
+    it("should distribution an image", function(done) {
+      this.timeout(30000);
+      var image = docker.getImage(testImage);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.ok;
+        done();
+      }
+
+      image.distribution(handler);
     });
   });
 

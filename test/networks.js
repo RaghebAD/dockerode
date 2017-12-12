@@ -10,6 +10,7 @@ describe("#networks", function() {
   var testNetwork;
 
   before(function(done) {
+    this.timeout(30000);
     docker.createContainer({
       Image: 'ubuntu',
       AttachStdin: false,
@@ -20,10 +21,10 @@ describe("#networks", function() {
       OpenStdin: false,
       StdinOnce: false
     }, function(err, container) {
-      if (err) done(err);
+      if (err) return done(err);
       testContainer = container.id;
       container.start(function(err, result) {
-        if (err) done(err);
+        if (err) return done(err);
 
         docker.createNetwork({
           "Name": "isolated_nw",
@@ -32,11 +33,11 @@ describe("#networks", function() {
             "Config": [{
               "Subnet": "172.20.0.0/16",
               "IPRange": "172.20.10.0/24",
-              "Gateway": "172.20.10.11"
+              "Gateway": "172.20.10.12"
             }]
           }
         }, function(err, network) {
-          if (err) done(err);
+          if (err) return done(err);
           testNetwork = network;
           done();
         });
@@ -48,12 +49,12 @@ describe("#networks", function() {
     this.timeout(15000);
     var container = docker.getContainer(testContainer);
     container.kill(function(err, result) {
-      if (err) done(err);
+      if (err) return done(err);
       container.remove(function(err, result) {
-        if (err) done(err);
+        if (err) return done(err);
 
         testNetwork.remove(function(err, result) {
-          if (err) done(err);
+          if (err) return done(err);
           done();
         });
       });
@@ -77,12 +78,6 @@ describe("#networks", function() {
   });
 
   describe("#inspect", function() {
-    it("should inspect a network without callback", function(done) {
-      var network = testNetwork;
-      expect(network.inspect()).to.be.a('string');
-      done();
-    });
-
     it("should inspect a network", function(done) {
       var network = testNetwork;
 

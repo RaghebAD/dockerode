@@ -1,3 +1,5 @@
+/*jshint -W030 */
+
 var expect = require('chai').expect;
 var docker = require('./spec_helper').docker;
 
@@ -41,16 +43,179 @@ describe("#swarm", function() {
         expect(data).to.be.a('object');
         done();
       }
-      
+
       docker.swarmInspect(handler);
     });
   });
 
+  describe("#Secrets", function() {
+    var secret;
+    var d;
+
+    it("should list secrets", function(done) {
+      this.timeout(5000);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.a('array');
+        done();
+      }
+
+      docker.listSecrets({}, handler);
+    });
+
+    it("should create secret", function(done) {
+      this.timeout(5000);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.a('object');
+        secret = data;
+        done();
+      }
+
+      var opts = {
+        "Name": "app-key.crt",
+        "Labels": {
+          "foo": "bar"
+        },
+        "Data": "VEhJUyBJUyBOT1QgQSBSRUFMIENFUlRJRklDQVRFCg=="
+      };
+
+      docker.createSecret(opts, handler);
+    });
+
+    it("should inspect secret", function(done) {
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.ok;
+        d = data;
+        done();
+      }
+      secret.inspect(handler);
+    });
+
+
+    it("should update secret", function(done) {
+      this.timeout(15000);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.empty;
+        done();
+      }
+      var opts = {
+        "Name": "app-key.crt",
+        "version": parseInt(d.Version.Index),
+        "Labels": {
+          "foo": "bar",
+          "foo2": "bar2"
+        },
+        "Data": "VEhJUyBJUyBOT1QgQSBSRUFMIENFUlRJRklDQVRFCg=="
+      };
+      secret.update(opts, handler);
+    });
+
+    it("should delete secret", function(done) {
+      this.timeout(5000);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        done();
+      }
+
+      secret.remove(handler);
+    });
+  });
+
+
+  describe("#Configs", function() {
+    var config;
+    var d;
+
+    it("should create config", function(done) {
+      this.timeout(5000);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.a('object');
+        config = data;
+        done();
+      }
+
+      var opts = {
+        "Name": "app-key.conf",
+        "Labels": {
+          "foo": "bar"
+        },
+        "Data": "VEhJUyBJUyBOT1QgQSBSRUFMIENFUlRJRklDQVRFCg=="
+      };
+
+      docker.createConfig(opts, handler);
+    });
+
+    it("should list configs", function(done) {
+      this.timeout(5000);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.a('array');
+        done();
+      }
+
+      docker.listConfigs({}, handler);
+    });
+
+    it("should inspect config", function(done) {
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.ok;
+        d = data;
+        done();
+      }
+      config.inspect(handler);
+    });
+
+
+    it("should update config", function(done) {
+      this.timeout(15000);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.empty;
+        done();
+      }
+      var opts = {
+        "Name": "app-key.conf",
+        "version": parseInt(d.Version.Index),
+        "Labels": {
+          "foo": "bar",
+          "foo2": "bar2"
+        },
+        "Data": "VEhJUyBJUyBOT1QgQSBSRUFMIENFUlRJRklDQVRFCg=="
+      };
+      config.update(opts, handler);
+    });
+
+    it("should delete config", function(done) {
+      this.timeout(5000);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        done();
+      }
+
+      config.remove(handler);
+    });
+  });
+
+
   describe("#Services", function() {
     var service;
+    var d;
 
     it("should create service", function(done) {
-      this.timeout(5000);
+      this.timeout(60000);
 
       function handler(err, data) {
         expect(err).to.be.null;
@@ -103,21 +268,19 @@ describe("#swarm", function() {
       docker.listServices(handler);
     });
 
-    it("should inspect a service without callback", function(done) {
-      expect(service.inspect()).to.be.a('string');
-      done();
-    });
-
     it("should inspect service", function(done) {
       function handler(err, data) {
         expect(err).to.be.null;
         expect(data).to.be.ok;
+        d = data;
         done();
       }
       service.inspect(handler);
     });
 
     it("should update service", function(done) {
+      this.timeout(30000);
+
       function handler(err, data) {
         expect(err).to.be.null;
         expect(data).to.be.ok;
@@ -125,7 +288,7 @@ describe("#swarm", function() {
       }
       var opts = {
         "Name": "redis",
-        "version": 2,
+        "version": parseInt(d.Version.Index),
         "TaskTemplate": {
           "ContainerSpec": {
             "Image": "redis"
@@ -155,16 +318,38 @@ describe("#swarm", function() {
       service.update(opts, handler);
     });
 
-    it("should delete service", function(done) {
-      this.timeout(5000);
 
-      function handler(err, data) {
+
+    it("should get the logs for a service as a stream", function(done) {
+      this.timeout(30000);
+
+      var logs_opts = {
+        follow: true,
+        stdout: true,
+        stderr: true,
+        timestamps: true
+      };
+
+      function handler(err, stream) {
         expect(err).to.be.null;
+        expect(stream.pipe).to.be.ok;
         done();
       }
 
-      service.remove(handler);
+      service.logs(logs_opts, handler);
     });
+
+      it("should delete service", function(done) {
+        this.timeout(5000);
+
+        function handler(err, data) {
+          expect(err).to.be.null;
+          done();
+        }
+
+        service.remove(handler);
+      });
+
   });
 
   describe("#tasks", function() {
@@ -186,11 +371,6 @@ describe("#swarm", function() {
       });
 
       if (task) {
-        it("should inspect a task without callback", function(done) {
-          expect(task.inspect()).to.be.a('string');
-          done();
-        });
-
         it("should inspect task", function(done) {
           function handler(err, data) {
             expect(err).to.be.null;
@@ -219,11 +399,6 @@ describe("#swarm", function() {
         docker.listNodes(handler);
       });
 
-      it("should inspect a node without callback", function(done) {
-        expect(node.inspect()).to.be.a('string');
-        done();
-      });
-
       it("should inspect node", function(done) {
         function handler(err, data) {
           expect(err).to.be.null;
@@ -235,7 +410,7 @@ describe("#swarm", function() {
 
       it("should remove node", function(done) {
         function handler(err, data) {
-	  // error is [Error: (HTTP code 500) server error - rpc error: code = 9 desc = node xxxxxxxxxx is a cluster manager and is a member of the raft cluster. It must be demoted to worker before removal ] 
+          // error is [Error: (HTTP code 500) server error - rpc error: code = 9 desc = node xxxxxxxxxx is a cluster manager and is a member of the raft cluster. It must be demoted to worker before removal ]
           expect(err).to.not.be.null;
           expect(data).to.be.null;
           done();
@@ -247,7 +422,7 @@ describe("#swarm", function() {
 
   describe("#leaveSwarm", function() {
     it("should leave swarm", function(done) {
-      this.timeout(5000);
+      this.timeout(10000);
 
       function handler(err, data) {
         expect(err).to.be.null;

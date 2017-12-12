@@ -21,17 +21,12 @@ describe("#container", function() {
     }, function(err, container) {
       if (err) done(err);
       testContainer = container.id;
+      console.log('Created test container ' + container.id);
       done();
     });
   });
 
   describe("#inspect", function() {
-    it("should inspect a container without callback", function(done) {
-      var container = docker.getContainer(testContainer);
-      expect(container.inspect()).to.be.a('string');
-      done();
-    });
-
     it("should inspect a container", function(done) {
       var container = docker.getContainer(testContainer);
 
@@ -113,6 +108,40 @@ describe("#container", function() {
       }
 
       container.start(handler);
+    });
+  });
+
+  describe("#checkpoints", function() {
+    before(function() {
+      if(process.platform === 'darwin' || 'TRAVIS' in process.env && 'CI' in process.env) {
+        this.skip();
+      }
+    });
+
+    it("should create container checkpoint", function(done) {
+      var container = docker.getContainer(testContainer);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.ok;
+        done();
+      }
+
+      container.createCheckpoint({
+        'checkpointID': 'testCheckpoint'
+      }, handler);
+    });
+
+    it("should list containers checkpoints", function(done) {
+      var container = docker.getContainer(testContainer);
+
+      function handler(err, data) {
+        expect(err).to.be.null;
+        expect(data).to.be.ok;
+        done();
+      }
+
+      container.listCheckpoint(handler);
     });
   });
 
@@ -221,12 +250,13 @@ describe("#container", function() {
           container.start(function(err, data) {
             expect(err).to.be.null;
 
-            stream.write(randomString(size) + '\n\x04');
+            var aux = randomString(size) + '\n\x04';
+            stream.write(aux);
 
             container.wait(function(err, data) {
               expect(err).to.be.null;
               expect(data).to.be.ok;
-              expect(+output.slice(size + 2)).to.equal(size + 1);
+              expect(+output.slice(size)).to.equal(size + 1);
               done();
             });
           });
@@ -551,7 +581,7 @@ describe("#container", function() {
 
   describe("#exec", function() {
     it("should run exec on a container", function(done) {
-      this.timeout(10000);
+      this.timeout(20000);
       var options = {
         Cmd: ["echo", "'foo'"]
       };
@@ -578,15 +608,14 @@ describe("#container", function() {
     });
 
     it("should allow exec stream hijacking on a container", function(done) {
-      this.timeout(10000);
+      this.timeout(20000);
       var options = {
         Cmd: ["cat"],
         AttachStdin: true,
         AttachStdout: true,
       };
       var startOpts = {
-        hijack: true,
-        stdin: true,
+        hijack: true
       };
 
       var container = docker.getContainer(testContainer);
